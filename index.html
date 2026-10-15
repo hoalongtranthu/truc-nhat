@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f7fb" />
+  <title>Phân công trực nhật</title>
+  <link rel="stylesheet" href="index.css" />
+  <script src="index.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">QUẢN LÝ LỚP HỌC</p>
+        <h1>Phân công trực nhật</h1>
+        <p class="subtitle">Chia việc nhanh, theo dõi công bằng và lưu ngay trên trình duyệt.</p>
+      </div>
+      <button id="themeToggle" class="button button-ghost" type="button" aria-label="Chuyển giao diện">☾ Giao diện tối</button>
+    </header>
+
+    <main>
+      <section class="stats-grid" aria-label="Tổng quan">
+        <article class="stat-card"><span class="stat-icon">👥</span><div><p>Tổng thành viên</p><strong id="totalStudents">0</strong></div></article>
+        <article class="stat-card"><span class="stat-icon">🟢</span><div><p>Còn lượt trực</p><strong id="availableCount">0</strong></div></article>
+        <article class="stat-card"><span class="stat-icon">⚠️</span><div><p>Đang bị phạt</p><strong id="penaltyCount">0</strong></div></article>
+        <article class="stat-card"><span class="stat-icon">📋</span><div><p>Lượt đã phân công</p><strong id="assignmentCount">0</strong></div></article>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading"><div><p class="eyebrow">BƯỚC 1</p><h2>Danh sách thành viên</h2></div><span class="muted">Mỗi người bình thường có 1 lượt trực trong một vòng.</span></div>
+        <form id="studentForm" class="inline-form">
+          <label class="sr-only" for="studentName">Tên học sinh</label>
+          <input id="studentName" type="text" maxlength="60" placeholder="Nhập tên học sinh..." autocomplete="off" required />
+          <button class="button button-primary" type="submit">＋ Thêm thành viên</button>
+        </form>
+        <div class="bulk-entry">
+          <label for="bulkStudentNames">Thêm nhiều thành viên cùng lúc</label>
+          <textarea id="bulkStudentNames" rows="4" placeholder="Mỗi dòng một tên, ví dụ:
+Nguyễn Văn A
+Trần Thị B
+Lê Văn C"></textarea>
+          <div class="bulk-entry-footer"><span class="muted">Có thể dán danh sách từ Excel hoặc tin nhắn. Tên trùng sẽ được bỏ qua.</span><button id="addBulkStudents" class="button button-secondary" type="button">＋ Thêm danh sách</button></div>
+        </div>
+        <div class="legend"><span><i class="dot dot-favorite"></i> Ưa thích: ưu tiên việc nhẹ</span><span><i class="dot dot-dislike"></i> Không ưa: ưu tiên việc nặng</span><span><i class="dot dot-punished"></i> Bị phạt: ưu tiên trực tuần sau</span></div>
+        <div id="studentList" class="student-list"></div>
+        <p id="emptyStudents" class="empty-state">Chưa có thành viên. Hãy thêm tên hoặc dùng dữ liệu mẫu.</p>
+        <div class="section-actions"><button id="loadSample" class="button button-secondary" type="button">Dùng dữ liệu mẫu</button><button id="clearStudents" class="button button-danger-ghost" type="button">Xóa toàn bộ thành viên</button></div>
+      </section>
+
+      <div class="two-column">
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">BƯỚC 2</p><h2>Phạt trong tuần này</h2></div><span class="pill pill-warning">Áp dụng tuần kế tiếp</span></div>
+          <p class="helper-text">Chọn những bạn bị phạt trong tuần hiện tại. Khi bước sang tuần kế tiếp, mỗi bạn được chọn sẽ có <strong>5 lượt trực</strong> (tối đa một việc/ngày), được ưu tiên phân công từ thứ Hai đến thứ Sáu.</p>
+          <div id="punishmentPicker" class="check-list"></div>
+          <div class="section-actions"><button id="savePunishments" class="button button-primary" type="button">Lưu danh sách phạt tuần này</button></div>
+          <p id="punishmentStatus" class="status-text" aria-live="polite"></p>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><div><p class="eyebrow">BƯỚC 3</p><h2>Trạng thái lượt trực</h2></div></div>
+          <div class="mini-section"><h3>Available — còn lượt</h3><div id="availableList" class="chip-list"></div></div>
+          <div class="mini-section"><h3>Danh sách phạt tuần này</h3><div id="currentPunishmentList" class="chip-list"></div></div>
+          <div class="mini-section"><h3>Đã trực / hết lượt trong vòng</h3><div id="completedList" class="chip-list"></div></div>
+          <p class="helper-text small">Khi tất cả thành viên hết lượt, hệ thống tự bắt đầu vòng mới. Lịch sử phân công cũ vẫn được giữ lại.</p>
+        </section>
+      </div>
+
+      <section class="panel assignment-panel">
+        <div class="section-heading"><div><p class="eyebrow">BƯỚC 4</p><h2>Tạo lịch trực nhật</h2></div><span class="muted">Chọn ngày, sau đó random hoặc chọn từng việc.</span></div>
+        <div class="date-row"><label for="assignmentDate">Ngày trực nhật</label><input id="assignmentDate" type="date" /></div>
+        <div id="weekNotice" class="notice" hidden></div>
+        <div class="task-grid">
+          <article class="task-card task-heavy"><div class="task-top"><span class="task-symbol">🧽</span><span class="task-type">1 NGƯỜI · VIỆC NẶNG</span></div><h3>Lau bảng, đổ nước, đổ rác</h3><p>Ưu tiên người bị phạt, sau đó người không ưa.</p><div id="task1Selection" class="selection-box">Chưa chọn người</div><button class="button button-secondary task-random" data-task="task1" type="button">🎲 Random việc này</button></article>
+          <article class="task-card task-heavy"><div class="task-top"><span class="task-symbol">🧹</span><span class="task-type">2 NGƯỜI · VIỆC NẶNG</span></div><h3>Quét lớp + quét hành lang</h3><p>Ưu tiên người bị phạt, sau đó người không ưa.</p><div id="task2Selection" class="selection-box">Chưa chọn người</div><button class="button button-secondary task-random" data-task="task2" type="button">🎲 Random việc này</button></article>
+          <article class="task-card task-light"><div class="task-top"><span class="task-symbol">🪣</span><span class="task-type">2 NGƯỜI · VIỆC NHẸ</span></div><h3>Lau lớp + lau hành lang</h3><p>Ưu tiên người ưa thích, rồi đến các bạn còn lại.</p><div id="task3Selection" class="selection-box">Chưa chọn người</div><button class="button button-secondary task-random" data-task="task3" type="button">🎲 Random việc này</button></article>
+        </div>
+        <div class="assignment-actions"><button id="randomAll" class="button button-primary" type="button">✦ Random cả 3 công việc</button><button id="saveAssignment" class="button button-success" type="button">✓ Lưu phân công</button></div>
+        <p id="assignmentStatus" class="status-text" aria-live="polite"></p>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading"><div><p class="eyebrow">LỊCH ĐÃ LƯU</p><h2>Danh sách công việc và người trực</h2></div><button id="copyAll" class="button button-secondary" type="button">▣ Copy danh sách</button></div>
+        <div id="savedAssignments" class="saved-list"></div>
+        <p id="emptyAssignments" class="empty-state">Chưa có lịch trực nào được lưu.</p>
+      </section>
+      <footer>Toàn bộ dữ liệu được lưu trong localStorage của trình duyệt này. Hãy xuất/copy lịch nếu cần gửi cho người khác.</footer>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
