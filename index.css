@@ -7,3 +7,9 @@
 /* Collapsible panels */
 .section-heading{flex-wrap:wrap}.collapse-toggle{margin-left:auto;display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);color:var(--muted);padding:7px 10px;font:inherit;font-size:.72rem;font-weight:700;white-space:nowrap}.collapse-toggle:hover{color:var(--text);border-color:var(--primary)}.collapse-chevron{font-size:1rem;line-height:1}.panel.is-collapsed>*:not(.section-heading){display:none!important}.panel.is-collapsed{padding-bottom:18px}.panel.is-collapsed .section-heading{margin-bottom:0}
 @media(max-width:560px){.bulk-entry-footer{align-items:stretch;flex-direction:column}.bulk-entry-footer .button{width:100%}.collapse-toggle{margin-left:0}.section-heading{flex-direction:row;align-items:center}.section-heading>div{flex:1;min-width:180px}.section-heading>.muted{width:100%}}
+
+/* Manual member selection for each duty slot */
+.assignment-slots{display:grid;gap:8px;margin-top:auto;margin-bottom:10px;min-width:0}
+.assignment-slot{display:grid;gap:5px;font-size:.7rem;font-weight:700;color:var(--muted)}
+.assignment-slot select{width:100%;min-width:0;border:1px solid var(--border);border-radius:9px;padding:10px;background:var(--surface);color:var(--text);font:inherit;font-size:.76rem;font-weight:500}
+.assignment-slot select:focus-visible{outline:3px solid color-mix(in srgb,var(--primary) 35%,transparent);outline-offset:2px}

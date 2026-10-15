@@ -132,10 +132,32 @@ function renderStatusLists() {
   renderChipList(els.completedList, completed, 'Chưa có ai hết lượt');
 }
 function renderDraft() {
+  const date = els.assignmentDate.value || todayISO();
+  const allSelected = TASKS.flatMap((task) => draft[task.id]);
+
   for (const task of TASKS) {
     const target = $(`#${task.id}Selection`);
-    const names = draft[task.id].map((id) => studentById(id)?.name).filter(Boolean);
-    target.innerHTML = names.length ? names.map((name) => `<span class="selection-name">${escapeHTML(name)}</span>`).join('') : '<span class="selection-empty">Chưa chọn người</span>';
+    target.innerHTML = Array.from({ length: task.count }, (_, slotIndex) => {
+      const selectedId = draft[task.id][slotIndex] || '';
+      const usedByOtherSlot = new Set(allSelected.filter((id) => id !== selectedId));
+      const options = state.students.map((student) => {
+        const penaltyRecord = penaltyRecordForDate(date);
+        const isPenaltyMember = penaltyRecord.ids.includes(student.id);
+        const penaltyLeft = penaltyRecord.remaining[student.id] || 0;
+        const exhaustedPenalty = isPenaltyMember && penaltyLeft <= 0;
+        const isFallback = !isPenaltyMember && student.remaining <= 0;
+        const tags = [
+          isPenaltyMember && penaltyLeft > 0 ? `phạt còn ${penaltyLeft} lượt` : '',
+          exhaustedPenalty ? 'đã hết lượt phạt' : '',
+          isFallback ? 'hết lượt thường — dùng bổ sung' : '',
+          student.favorite ? 'ưa thích' : '',
+          student.disliked ? 'không ưa' : '',
+        ].filter(Boolean);
+        const disabled = (usedByOtherSlot.has(student.id) || exhaustedPenalty) && student.id !== selectedId;
+        return `<option value="${escapeHTML(student.id)}" ${student.id === selectedId ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${escapeHTML(student.name)}${tags.length ? ` (${escapeHTML(tags.join(' · '))})` : ''}</option>`;
+      }).join('');
+      return `<label class="assignment-slot"><span>Người ${slotIndex + 1}</span><select data-task-select="${task.id}" data-slot-index="${slotIndex}" aria-label="Chọn người ${slotIndex + 1} cho ${escapeHTML(task.title)}"><option value="">-- Chọn thành viên --</option>${options}</select></label>`;
+    }).join('');
   }
 }
 function renderWeekNotice() {
@@ -251,8 +273,8 @@ function randomAll() {
   els.assignmentStatus.textContent = fallbackIds.size ? `Đã random đủ 5 vị trí, dùng bổ sung ${fallbackIds.size} bạn đã hết lượt. Khi lưu, hệ thống sẽ bắt đầu vòng mới cho các bạn bình thường.` : 'Đã random xong. Có thể random lại hoặc chỉnh từng công việc trước khi lưu.';
 }
 function validateDraft() {
-  const allIds = TASKS.flatMap((task) => draft[task.id]);
-  if (TASKS.some((task) => draft[task.id].length !== task.count)) return 'Hãy chọn đủ người cho cả 3 công việc.';
+  const allIds = TASKS.flatMap((task) => draft[task.id]).filter(Boolean);
+  if (TASKS.some((task) => draft[task.id].filter(Boolean).length !== task.count)) return 'Hãy chọn đủ người cho cả 3 công việc.';
   if (new Set(allIds).size !== allIds.length) return 'Một bạn không thể nhận hai công việc trong cùng một ngày.';
   for (const id of allIds) {
     const student = studentById(id);
@@ -277,7 +299,7 @@ function saveAssignment() {
     state.assignments = state.assignments.filter((item) => item.id !== existing.id);
   }
 
-  const tasks = JSON.parse(JSON.stringify(draft));
+  const tasks = Object.fromEntries(TASKS.map((task) => [task.id, draft[task.id].filter(Boolean)]));
   const names = {};
   const assignedIds = TASKS.flatMap((task) => tasks[task.id]);
   const usedFallback = assignedIds.some((id) => draftFallbackIds.has(id));
@@ -393,6 +415,32 @@ els.studentList.addEventListener('click', (event) => {
 });
 els.punishmentPicker.addEventListener('change', () => { els.punishmentStatus.textContent = 'Bạn vừa thay đổi lựa chọn. Nhấn “Lưu danh sách phạt tuần này” để xác nhận.'; });
 els.savePunishments.addEventListener('click', saveCurrentPunishments);
+document.querySelector('.task-grid').addEventListener('change', (event) => {
+  const select = event.target.closest('select[data-task-select]');
+  if (!select) return;
+  const { taskSelect: taskId, slotIndex: rawIndex } = select.dataset;
+  const slotIndex = Number(rawIndex);
+  const selectedId = select.value;
+  if (selectedId && TASKS.some((task) => task.id !== taskId && draft[task.id].includes(selectedId))) {
+    showToast('Một bạn không thể nhận hai công việc trong cùng ngày.');
+    renderDraft();
+    return;
+  }
+  const oldId = draft[taskId][slotIndex];
+  if (oldId) draftFallbackIds.delete(oldId);
+  while (draft[taskId].length < TASKS.find((task) => task.id === taskId).count) draft[taskId].push('');
+  draft[taskId][slotIndex] = selectedId || '';
+  draft[taskId] = draft[taskId].slice(0, TASKS.find((task) => task.id === taskId).count);
+  if (selectedId) {
+    const student = studentById(selectedId);
+    const date = els.assignmentDate.value || todayISO();
+    const penalty = penaltyRecordForDate(date);
+    if (student && !isEligibleForDate(student, date) && !penalty.ids.includes(student.id)) draftFallbackIds.add(selectedId);
+  }
+  // Keep slot positions stable when selecting manually; normalize blank slots at the end only.
+  renderAll();
+  els.assignmentStatus.textContent = 'Đã cập nhật lựa chọn thủ công. Kiểm tra đủ 5 người rồi bấm Lưu phân công.';
+});
 document.querySelectorAll('.task-random').forEach((button) => button.addEventListener('click', () => drawTask(button.dataset.task)));
 els.randomAll.addEventListener('click', randomAll);
 els.saveAssignment.addEventListener('click', saveAssignment);
